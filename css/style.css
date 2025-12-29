@@ -341,3 +341,77 @@ textarea{
   gap:10px;
   padding:10px 6px 6px;
 }
+
+/* ===== おみくじ フルスクリーン ===== */
+.omikuji{
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  z-index: 100;
+  background: #ffffffee;
+  backdrop-filter: blur(10px);
+}
+
+.omikuji.show{ display: grid; }
+
+.omikujiCard{
+  width: min(720px, 92vw);
+  border-radius: 22px;
+  border: 1px solid #0b12201a;
+  background: #ffffff;
+  box-shadow: 0 30px 110px #00000025;
+  padding: 18px;
+  text-align: center;
+}
+
+.omikujiTop{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.omikujiTitle{
+  font-weight: 1000;
+  letter-spacing: .08em;
+  color:#0b1220;
+}
+
+.omikujiClose{
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid #0b12201a;
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.omikujiLuck{
+  font-size: clamp(56px, 10vw, 110px);
+  font-weight: 1100;
+  letter-spacing: .12em;
+  margin: 18px 0 6px;
+}
+
+.omikujiSub{
+  color:#334155;
+  font-weight: 900;
+  opacity: .85;
+}
+
+/* 運勢別の雰囲気 */
+.omikuji.good{
+  background:
+    radial-gradient(1000px 600px at 50% 18%, #fbbf2450 0%, transparent 65%),
+    radial-gradient(1000px 600px at 15% 70%, #fb718530 0%, transparent 65%),
+    linear-gradient(135deg, #ffffff, #fff7ed);
+}
+.omikuji.bad{
+  background:
+    radial-gradient(1000px 600px at 50% 18%, #60a5fa2a 0%, transparent 65%),
+    linear-gradient(135deg, #ffffff, #e2e8f0);
+  filter: saturate(.85);
+}
+

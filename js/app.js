@@ -21,6 +21,8 @@ const DEFAULT_GOOD = [
   "小さな達成を、ちゃんと祝える人が強い。",
   "迷ってる時点で、ちゃんと考えてるってことだよ。",
   "今日は100点じゃなくていい。続ければ、後で100点になる。",
+
+  // 追加名言
   "夢はでっかく根はふかく",
   "誰かの為に生きてこそ、人生には価値がある",
   "創作は常に冒険である。所詮は人力を尽した後、天命にまかせるより仕方はない",
@@ -61,7 +63,6 @@ const DEFAULT_GOOD = [
   "私が人生で学んだことは、自分が今もっている力を全部使えということです。"
 ];
 
-// 赤ちゃん：うざい系（好みで増やしてOK）
 const DEFAULT_BABY = [
   "へぇ〜それ、まだ終わってないんだ？（にや）",
   "「今からやる」って、何回目？",
@@ -76,18 +77,22 @@ const DEFAULT_BABY = [
 ];
 
 // =============================
-// おみくじ（運勢だけ）
+// 確率
 // =============================
-const LUCKS = ["大吉", "中吉", "吉", "末吉", "小吉", "凶", "大凶"];
-const P_SHOW_LUCK = 0.65;     // おみくじ表示する確率（表示しない回は ---）
-const P_BABY = 0.12;          // 赤ちゃん登場確率（たまに）
-const P_DAIKYO_BONUS = 0.06;  // 大凶を少し出やすくする
+const P_BABY = 0.12;          // 赤ちゃん登場確率
+const P_OMIKUJI_EVENT = 0.18; // 名言の後に「たまに」おみくじが出る確率
+const P_DAIKYO_BONUS = 0.06;  // 大凶ちょい増し
 
 // =============================
-// localStorage
+// おみくじ
 // =============================
-const LS_GOOD = "ojisan_good_quotes_v3"; // v3に更新（前の保存が邪魔しにくい）
-const LS_BABY = "ojisan_baby_quotes_v3";
+const LUCKS = ["大吉", "中吉", "吉", "末吉", "小吉", "凶", "大凶"];
+
+// =============================
+// localStorage（編集保存）
+// =============================
+const LS_GOOD = "ojisan_good_quotes_v4";
+const LS_BABY = "ojisan_baby_quotes_v4";
 
 function loadLines(key, fallback) {
   try {
@@ -123,7 +128,6 @@ const btnEdit = document.getElementById("btnEdit");
 const btnCopy = document.getElementById("btnCopy");
 
 const whoLabel = document.getElementById("whoLabel");
-const luckLabel = document.getElementById("luckLabel");
 
 const dot = document.getElementById("dot");
 const statusText = document.getElementById("statusText");
@@ -131,9 +135,9 @@ const statusText = document.getElementById("statusText");
 // 演出
 const fxLux = document.getElementById("fxLux");
 const fxSad = document.getElementById("fxSad");
-const fxParty = document.getElementById("fxParty"); // ←HTMLに入ってない場合もあるので後でガード
+const fxParty = document.getElementById("fxParty");
 
-// modal
+// セリフ編集モーダル
 const modal = document.getElementById("modal");
 const btnClose = document.getElementById("btnClose");
 const btnSave = document.getElementById("btnSave");
@@ -142,6 +146,11 @@ const taGood = document.getElementById("taGood");
 const taBaby = document.getElementById("taBaby");
 const tabs = [...document.querySelectorAll(".tab")];
 const panels = [...document.querySelectorAll(".panel")];
+
+// おみくじ（全画面）
+const omikuji = document.getElementById("omikuji");
+const omikujiLuckEl = document.getElementById("omikujiLuck");
+const btnOmikujiClose = document.getElementById("btnOmikujiClose");
 
 // =============================
 // util
@@ -176,27 +185,38 @@ function clearFX() {
   fxParty?.classList.remove("on");
 }
 
-function rollLuck() {
-  // 赤ちゃん演出に上書きされることがあるので、ここではいったんクリア
-  clearFX();
-
-  if (Math.random() > P_SHOW_LUCK) {
-    luckLabel.textContent = "---";
-    return null;
-  }
-
+// =============================
+// おみくじ表示
+// =============================
+function pickLuck() {
   const pDaikyo = Math.min(0.30, (1 / LUCKS.length) + P_DAIKYO_BONUS);
-  let luck;
-  if (Math.random() < pDaikyo) luck = "大凶";
-  else luck = pick(LUCKS.filter(x => x !== "大凶"));
-
-  luckLabel.textContent = luck;
-
-  if (luck === "大吉") fxLux?.classList.add("on");
-  if (luck === "大凶") fxSad?.classList.add("on");
-
-  return luck;
+  if (Math.random() < pDaikyo) return "大凶";
+  return pick(LUCKS.filter(x => x !== "大凶"));
 }
+
+function showOmikuji(luck) {
+  if (!omikuji) return;
+  omikujiLuckEl.textContent = luck;
+
+  omikuji.classList.remove("good", "bad");
+  if (luck === "大吉") omikuji.classList.add("good");
+  if (luck === "大凶") omikuji.classList.add("bad");
+
+  omikuji.classList.add("show");
+  omikuji.setAttribute("aria-hidden", "false");
+}
+
+function hideOmikuji() {
+  if (!omikuji) return;
+  omikuji.classList.remove("show", "good", "bad");
+  omikuji.setAttribute("aria-hidden", "true");
+  // 何事もなかったように（演出も戻す）
+  clearFX();
+}
+
+btnOmikujiClose?.addEventListener("click", hideOmikuji);
+// 背景クリックでも閉じたいならON（任意）
+// omikuji?.addEventListener("click", (e) => { if (e.target === omikuji) hideOmikuji(); });
 
 // =============================
 // main
@@ -204,94 +224,4 @@ function rollLuck() {
 async function talk() {
   if (btn.disabled) return;
 
-  setSpeaking(true);
-
-  // 先におみくじ（運勢だけ）
-  rollLuck();
-
-  await sleep(220 + Math.random() * 260);
-
-  const isBaby = Math.random() < P_BABY;
-  if (isBaby) {
-    setSpeaker(SPEAKERS.baby);
-
-    // 赤ちゃんの時はパリピ演出で上書き
-    clearFX();
-    fxParty?.classList.add("on");
-
-    await typeText(pick(babyQuotes));
-    setSpeaking(false);
-    return;
-  }
-
-  setSpeaker(pick(OJISANS));
-  await typeText(pick(goodQuotes));
-  setSpeaking(false);
-}
-
-// =============================
-// modal（編集）
-// =============================
-function openModal() {
-  taGood.value = goodQuotes.join("\n");
-  taBaby.value = babyQuotes.join("\n");
-  modal.classList.add("show");
-  modal.setAttribute("aria-hidden", "false");
-}
-
-function closeModal() {
-  modal.classList.remove("show");
-  modal.setAttribute("aria-hidden", "true");
-}
-
-function setActiveTab(tabKey) {
-  tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tabKey));
-  panels.forEach(p => p.classList.toggle("hidden", p.dataset.panel !== tabKey));
-}
-
-// =============================
-// events
-// =============================
-btn.addEventListener("click", talk);
-
-btnCopy.addEventListener("click", async () => {
-  const text = msgEl.textContent.trim();
-  if (!text) return;
-  try { await navigator.clipboard.writeText(text); } catch {}
-});
-
-btnEdit.addEventListener("click", openModal);
-btnClose.addEventListener("click", closeModal);
-
-modal.addEventListener("click", (e) => {
-  if (e.target === modal) closeModal();
-});
-
-tabs.forEach(t => t.addEventListener("click", () => setActiveTab(t.dataset.tab)));
-
-btnSave.addEventListener("click", () => {
-  const g = taGood.value.split("\n").map(s => s.trim()).filter(Boolean);
-  const b = taBaby.value.split("\n").map(s => s.trim()).filter(Boolean);
-
-  goodQuotes = g.length ? g : [...DEFAULT_GOOD];
-  babyQuotes = b.length ? b : [...DEFAULT_BABY];
-
-  saveLines(LS_GOOD, goodQuotes);
-  saveLines(LS_BABY, babyQuotes);
-  closeModal();
-});
-
-btnReset.addEventListener("click", () => {
-  goodQuotes = [...DEFAULT_GOOD];
-  babyQuotes = [...DEFAULT_BABY];
-
-  taGood.value = goodQuotes.join("\n");
-  taBaby.value = babyQuotes.join("\n");
-
-  saveLines(LS_GOOD, goodQuotes);
-  saveLines(LS_BABY, babyQuotes);
-});
-
-// 初期
-setSpeaker(SPEAKERS.ojisan1);
-setActiveTab("good");
+  // おみくじが出てる

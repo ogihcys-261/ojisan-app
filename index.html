@@ -10,7 +10,7 @@
   <!-- 演出レイヤ -->
   <div id="fxLux" class="fx fx-lux" aria-hidden="true"></div>
   <div id="fxSad" class="fx fx-sad" aria-hidden="true"></div>
-　<div id="fxParty" class="fx fx-party" aria-hidden="true"></div>
+  <div id="fxParty" class="fx fx-party" aria-hidden="true"></div>
 
   <div class="wrap">
     <section class="card portrait">
@@ -22,7 +22,6 @@
     <section class="card speech">
       <div class="badgeRow">
         <span class="badge">登場: <strong id="whoLabel">おじさん</strong></span>
-        <span class="badge">おみくじ: <strong id="luckLabel">---</strong></span>
       </div>
 
       <div class="msgBox" aria-live="polite">
@@ -67,6 +66,18 @@
         <button id="btnReset" class="ghost">初期に戻す</button>
         <button id="btnSave">保存</button>
       </div>
+    </div>
+  </div>
+
+  <!-- おみくじ（全画面） -->
+  <div id="omikuji" class="omikuji" aria-hidden="true">
+    <div class="omikujiCard" role="dialog" aria-modal="true" aria-labelledby="omikujiTitle">
+      <div class="omikujiTop">
+        <div class="omikujiTitle" id="omikujiTitle">おみくじ</div>
+        <button id="btnOmikujiClose" class="omikujiClose">閉じる</button>
+      </div>
+      <div id="omikujiLuck" class="omikujiLuck">大吉</div>
+      <div class="omikujiSub">（たまに出る）</div>
     </div>
   </div>
 
