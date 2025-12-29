@@ -8,11 +8,17 @@ const SPEAKERS = {
 };
 const OJISANS = [SPEAKERS.ojisan1, SPEAKERS.ojisan2];
 
+// 爆発後の差し替え画像（assetsに置く前提）
+const AFTER_EXPLODE_IMG = {
+  ojisan1: "assets/ojisan1_afterbakuhatsu.png",
+  ojisan2: "assets/ojisan2_afterbakuhatsu.png",
+};
+const EXPLODE_BG_IMG = "assets/bakuhatsu.png";
+
 // =============================
 // 初期セリフ（localStorageで編集可）
 // =============================
 const DEFAULT_GOOD = [
-  // もともとのやつ
   "結果が出る日って、努力した日のすぐ後じゃなくて、忘れたころに来るんだよ。",
   "ちゃんと休むのも、前に進むための仕事だよ。",
   "うまくいかない日があるのは、挑戦してる証拠だね。",
@@ -77,19 +83,21 @@ const DEFAULT_BABY = [
 ];
 
 // =============================
-// 確率
+// 確率・カウンタ
 // =============================
-const P_BABY = 0.12;          // 赤ちゃん登場確率
-const P_OMIKUJI_EVENT = 0.18; // 名言の後に「たまに」おみくじが出る確率
-const P_DAIKYO_BONUS = 0.06;  // 大凶ちょい増し
+const P_BABY = 0.12;            // 赤ちゃん登場
+const P_OMIKUJI_EVENT = 0.18;   // 名言の後に「たまに」おみくじ
+const P_DAIKYO_BONUS = 0.06;    // 大凶ちょい増し
+
+const P_EXPLODE = 0.02;         // ごくたまに爆発（任意調整）
+const EXPLODE_AT = 30;          // 30回目は絶対爆発
+
+let pressCount = 0;
+let exploded = false;
+let lastSpeakerKey = "ojisan1"; // 最後に表示した登場人物（爆発後差し替え用）
 
 // =============================
-// おみくじ
-// =============================
-const LUCKS = ["大吉", "中吉", "吉", "末吉", "小吉", "凶", "大凶"];
-
-// =============================
-// localStorage（編集保存）
+// localStorage（セリフ編集保存）
 // =============================
 const LS_GOOD = "ojisan_good_quotes_v4";
 const LS_BABY = "ojisan_baby_quotes_v4";
@@ -106,7 +114,6 @@ function loadLines(key, fallback) {
     return [...fallback];
   }
 }
-
 function saveLines(key, lines) {
   const cleaned = lines.map(s => String(s).trim()).filter(Boolean);
   localStorage.setItem(key, JSON.stringify(cleaned));
@@ -152,6 +159,12 @@ const omikuji = document.getElementById("omikuji");
 const omikujiLuckEl = document.getElementById("omikujiLuck");
 const btnOmikujiClose = document.getElementById("btnOmikujiClose");
 
+// 爆発（全画面）
+const boom = document.getElementById("boom"); // ←HTMLに追加するやつ
+const boomBg = document.getElementById("boomBg");
+const boomTitle = document.getElementById("boomTitle");
+const boomSub = document.getElementById("boomSub");
+
 // =============================
 // util
 // =============================
@@ -173,6 +186,7 @@ function setSpeaking(on) {
 }
 
 function setSpeaker(s) {
+  lastSpeakerKey = s.key;
   speakerImg.src = s.img;
   speakerName.textContent = s.name;
   speakerHint.textContent = s.hint;
@@ -185,9 +199,19 @@ function clearFX() {
   fxParty?.classList.remove("on");
 }
 
+function lockAll() {
+  btn.disabled = true;
+  btnEdit.disabled = true;
+  btnCopy.disabled = true;
+  statusText.textContent = "爆発後（再読み込みで復旧）";
+  dot.className = "dot";
+}
+
 // =============================
-// おみくじ表示
+// おみくじ
 // =============================
+const LUCKS = ["大吉", "中吉", "吉", "末吉", "小吉", "凶", "大凶"];
+
 function pickLuck() {
   const pDaikyo = Math.min(0.30, (1 / LUCKS.length) + P_DAIKYO_BONUS);
   if (Math.random() < pDaikyo) return "大凶";
@@ -210,18 +234,147 @@ function hideOmikuji() {
   if (!omikuji) return;
   omikuji.classList.remove("show", "good", "bad");
   omikuji.setAttribute("aria-hidden", "true");
-  // 何事もなかったように（演出も戻す）
-  clearFX();
+  clearFX(); // 何事もなかったように
 }
 
 btnOmikujiClose?.addEventListener("click", hideOmikuji);
-// 背景クリックでも閉じたいならON（任意）
-// omikuji?.addEventListener("click", (e) => { if (e.target === omikuji) hideOmikuji(); });
+
+// =============================
+// 爆発
+// =============================
+function doExplode() {
+  exploded = true;
+
+  // 画面演出を一旦クリアして、爆発状態へ
+  clearFX();
+  hideOmikuji();
+
+  // おじさんだけ巻き込まれ差分に差し替え（赤ちゃんはそのままでOK）
+  if (lastSpeakerKey === "ojisan1") speakerImg.src = AFTER_EXPLODE_IMG.ojisan1;
+  if (lastSpeakerKey === "ojisan2") speakerImg.src = AFTER_EXPLODE_IMG.ojisan2;
+
+  // メッセージもそれっぽく
+  msgEl.textContent = "💥 ！？！？（爆発に巻き込まれた）\n再読み込みしないと元に戻らない…";
+
+  // フルスクリーン爆発
+  if (boom) {
+    boom.classList.add("show");
+    boom.setAttribute("aria-hidden", "false");
+  }
+  if (boomBg) boomBg.src = EXPLODE_BG_IMG;
+
+  lockAll();
+}
 
 // =============================
 // main
 // =============================
 async function talk() {
-  if (btn.disabled) return;
+  if (btn.disabled || exploded) return;
+  if (omikuji?.classList.contains("show")) return; // おみくじ中は押せない
+  if (boom?.classList.contains("show")) return;    // 爆発中も押せない
 
-  // おみくじが出てる
+  setSpeaking(true);
+
+  // カウント（ボタン押下回数）
+  pressCount += 1;
+
+  await sleep(120 + Math.random() * 160);
+
+  const isBaby = Math.random() < P_BABY;
+
+  if (isBaby) {
+    setSpeaker(SPEAKERS.baby);
+    clearFX();
+    fxParty?.classList.add("on");
+    await typeText(pick(babyQuotes));
+  } else {
+    setSpeaker(pick(OJISANS));
+    clearFX();
+    await typeText(pick(goodQuotes));
+  }
+
+  setSpeaking(false);
+
+  // まず爆発判定（30回目は確定）
+  const mustExplode = (pressCount === EXPLODE_AT);
+  const randomExplode = (Math.random() < P_EXPLODE);
+  if (mustExplode || randomExplode) {
+    doExplode();
+    return; // 爆発したらここで終わり（おみくじは出さない）
+  }
+
+  // 爆発しなかった時だけ「たまに」おみくじ
+  if (Math.random() < P_OMIKUJI_EVENT) {
+    const luck = pickLuck();
+    clearFX();
+    if (luck === "大吉") fxLux?.classList.add("on");
+    if (luck === "大凶") fxSad?.classList.add("on");
+    showOmikuji(luck);
+  }
+}
+
+// =============================
+// modal（編集）
+// =============================
+function openModal() {
+  taGood.value = goodQuotes.join("\n");
+  taBaby.value = babyQuotes.join("\n");
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+function closeModal() {
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+function setActiveTab(tabKey) {
+  tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tabKey));
+  panels.forEach(p => p.classList.toggle("hidden", p.dataset.panel !== tabKey));
+}
+
+// =============================
+// events
+// =============================
+btn.addEventListener("click", talk);
+
+btnCopy.addEventListener("click", async () => {
+  const text = msgEl.textContent.trim();
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); } catch {}
+});
+
+btnEdit.addEventListener("click", openModal);
+btnClose.addEventListener("click", closeModal);
+
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) closeModal();
+});
+
+tabs.forEach(t => t.addEventListener("click", () => setActiveTab(t.dataset.tab)));
+
+btnSave.addEventListener("click", () => {
+  const g = taGood.value.split("\n").map(s => s.trim()).filter(Boolean);
+  const b = taBaby.value.split("\n").map(s => s.trim()).filter(Boolean);
+
+  goodQuotes = g.length ? g : [...DEFAULT_GOOD];
+  babyQuotes = b.length ? b : [...DEFAULT_BABY];
+
+  saveLines(LS_GOOD, goodQuotes);
+  saveLines(LS_BABY, babyQuotes);
+  closeModal();
+});
+
+btnReset.addEventListener("click", () => {
+  goodQuotes = [...DEFAULT_GOOD];
+  babyQuotes = [...DEFAULT_BABY];
+
+  taGood.value = goodQuotes.join("\n");
+  taBaby.value = babyQuotes.join("\n");
+
+  saveLines(LS_GOOD, goodQuotes);
+  saveLines(LS_BABY, babyQuotes);
+});
+
+// 初期
+setSpeaker(SPEAKERS.ojisan1);
+setActiveTab("good");

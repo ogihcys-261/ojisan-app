@@ -415,3 +415,43 @@ textarea{
   filter: saturate(.85);
 }
 
+/* ===== 爆発 全画面 ===== */
+.boom{
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 200;
+  background: #000;
+}
+
+.boom.show{ display:block; }
+
+.boomBg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  filter: saturate(1.25) contrast(1.08);
+}
+
+.boomText{
+  position:absolute;
+  inset:auto 0 0 0;
+  padding: 18px 18px 24px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,.65));
+  color: #fff;
+  text-shadow: 0 8px 30px rgba(0,0,0,.65);
+}
+
+.boomTitle{
+  font-weight: 1000;
+  letter-spacing: .06em;
+  font-size: clamp(22px, 5vw, 40px);
+}
+
+.boomSub{
+  margin-top: 6px;
+  font-weight: 900;
+  opacity: .9;
+}
