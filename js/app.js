@@ -8,7 +8,7 @@ const SPEAKERS = {
 };
 const OJISANS = [SPEAKERS.ojisan1, SPEAKERS.ojisan2];
 
-// 爆発後の差し替え画像（assetsに置く前提）
+// 爆発後の差し替え画像（assetsに置く）
 const AFTER_EXPLODE_IMG = {
   ojisan1: "assets/ojisan1_afterbakuhatsu.png",
   ojisan2: "assets/ojisan2_afterbakuhatsu.png",
@@ -28,7 +28,6 @@ const DEFAULT_GOOD = [
   "迷ってる時点で、ちゃんと考えてるってことだよ。",
   "今日は100点じゃなくていい。続ければ、後で100点になる。",
 
-  // 追加名言
   "夢はでっかく根はふかく",
   "誰かの為に生きてこそ、人生には価値がある",
   "創作は常に冒険である。所詮は人力を尽した後、天命にまかせるより仕方はない",
@@ -85,16 +84,21 @@ const DEFAULT_BABY = [
 // =============================
 // 確率・カウンタ
 // =============================
-const P_BABY = 0.12;            // 赤ちゃん登場
-const P_OMIKUJI_EVENT = 0.18;   // 名言の後に「たまに」おみくじ
-const P_DAIKYO_BONUS = 0.06;    // 大凶ちょい増し
+const P_BABY = 0.12;
+const P_OMIKUJI_EVENT = 0.18;
+const P_DAIKYO_BONUS = 0.06;
 
-const P_EXPLODE = 0.02;         // ごくたまに爆発（任意調整）
-const EXPLODE_AT = 30;          // 30回目は絶対爆発
+const P_EXPLODE = 0.02;           // ごくたまに爆発
+const EXPLODE_AT = 30;            // 30回目は確定
+const EXPLODE_DURATION_MS = 5000; // 5秒で閉じる
 
 let pressCount = 0;
-let exploded = false;
-let lastSpeakerKey = "ojisan1"; // 最後に表示した登場人物（爆発後差し替え用）
+
+// 爆発したら true → おじさんだけ巻き込まれ画像
+let isSooty = false;
+
+// 今表示してる登場人物
+let currentSpeakerKey = "ojisan1";
 
 // =============================
 // localStorage（セリフ編集保存）
@@ -159,11 +163,11 @@ const omikuji = document.getElementById("omikuji");
 const omikujiLuckEl = document.getElementById("omikujiLuck");
 const btnOmikujiClose = document.getElementById("btnOmikujiClose");
 
-// 爆発（全画面）
-const boom = document.getElementById("boom"); // ←HTMLに追加するやつ
+// 爆発（全画面）※HTMLにある前提
+const boom = document.getElementById("boom");
 const boomBg = document.getElementById("boomBg");
-const boomTitle = document.getElementById("boomTitle");
-const boomSub = document.getElementById("boomSub");
+
+let explodeTimer = null;
 
 // =============================
 // util
@@ -185,26 +189,30 @@ function setSpeaking(on) {
   statusText.textContent = on ? "考えてる…" : "待機中";
 }
 
-function setSpeaker(s) {
-  lastSpeakerKey = s.key;
-  speakerImg.src = s.img;
-  speakerName.textContent = s.name;
-  speakerHint.textContent = s.hint;
-  whoLabel.textContent = s.who;
-}
-
 function clearFX() {
   fxLux?.classList.remove("on");
   fxSad?.classList.remove("on");
   fxParty?.classList.remove("on");
 }
 
-function lockAll() {
-  btn.disabled = true;
-  btnEdit.disabled = true;
-  btnCopy.disabled = true;
-  statusText.textContent = "爆発後（再読み込みで復旧）";
-  dot.className = "dot";
+function applySootyIfOjisan() {
+  if (!isSooty) return;
+  if (currentSpeakerKey === "ojisan1") speakerImg.src = AFTER_EXPLODE_IMG.ojisan1;
+  if (currentSpeakerKey === "ojisan2") speakerImg.src = AFTER_EXPLODE_IMG.ojisan2;
+}
+
+function setSpeaker(s) {
+  currentSpeakerKey = s.key;
+
+  speakerName.textContent = s.name;
+  speakerHint.textContent = s.hint;
+  whoLabel.textContent = s.who;
+
+  // まず通常画像
+  speakerImg.src = s.img;
+
+  // 爆発後ならおじさんだけ差し替え
+  applySootyIfOjisan();
 }
 
 // =============================
@@ -234,49 +242,58 @@ function hideOmikuji() {
   if (!omikuji) return;
   omikuji.classList.remove("show", "good", "bad");
   omikuji.setAttribute("aria-hidden", "true");
-  clearFX(); // 何事もなかったように
+  clearFX();
 }
 
 btnOmikujiClose?.addEventListener("click", hideOmikuji);
 
 // =============================
-// 爆発
+// 爆発（5秒で閉じる / 終わったら通常に戻す）
 // =============================
-function doExplode() {
-  exploded = true;
-
-  // 画面演出を一旦クリアして、爆発状態へ
-  clearFX();
-  hideOmikuji();
-
-  // おじさんだけ巻き込まれ差分に差し替え（赤ちゃんはそのままでOK）
-  if (lastSpeakerKey === "ojisan1") speakerImg.src = AFTER_EXPLODE_IMG.ojisan1;
-  if (lastSpeakerKey === "ojisan2") speakerImg.src = AFTER_EXPLODE_IMG.ojisan2;
-
-  // メッセージもそれっぽく
-  msgEl.textContent = "💥 ！？！？（爆発に巻き込まれた）\n再読み込みしないと元に戻らない…";
-
-  // フルスクリーン爆発
-  if (boom) {
-    boom.classList.add("show");
-    boom.setAttribute("aria-hidden", "false");
-  }
+function showBoom() {
+  if (!boom) return;
   if (boomBg) boomBg.src = EXPLODE_BG_IMG;
+  boom.classList.add("show");
+  boom.setAttribute("aria-hidden", "false");
+}
 
-  lockAll();
+function hideBoom() {
+  if (!boom) return;
+  boom.classList.remove("show");
+  boom.setAttribute("aria-hidden", "true");
+}
+
+function doExplode() {
+  // 爆発中だけ連打防止（終わったら普通に戻す）
+  btn.disabled = true;
+
+  hideOmikuji();
+  clearFX();
+  showBoom();
+
+  // 爆発したら以降「おじさんだけ巻き込まれ」
+  isSooty = true;
+  applySootyIfOjisan();
+
+  if (explodeTimer) clearTimeout(explodeTimer);
+  explodeTimer = setTimeout(() => {
+    hideBoom();
+    btn.disabled = false;       // ←普通に機能する
+    statusText.textContent = "待機中";
+    dot.className = "dot";
+  }, EXPLODE_DURATION_MS);
 }
 
 // =============================
 // main
 // =============================
 async function talk() {
-  if (btn.disabled || exploded) return;
-  if (omikuji?.classList.contains("show")) return; // おみくじ中は押せない
-  if (boom?.classList.contains("show")) return;    // 爆発中も押せない
+  // 爆発中/おみくじ中は押せない
+  if (btn.disabled) return;
+  if (omikuji?.classList.contains("show")) return;
+  if (boom?.classList.contains("show")) return;
 
   setSpeaking(true);
-
-  // カウント（ボタン押下回数）
   pressCount += 1;
 
   await sleep(120 + Math.random() * 160);
@@ -296,15 +313,15 @@ async function talk() {
 
   setSpeaking(false);
 
-  // まず爆発判定（30回目は確定）
+  // 爆発判定（30回目確定 + ごくたまに）
   const mustExplode = (pressCount === EXPLODE_AT);
   const randomExplode = (Math.random() < P_EXPLODE);
   if (mustExplode || randomExplode) {
     doExplode();
-    return; // 爆発したらここで終わり（おみくじは出さない）
+    return; // この回はおみくじ出さない
   }
 
-  // 爆発しなかった時だけ「たまに」おみくじ
+  // たまにおみくじ
   if (Math.random() < P_OMIKUJI_EVENT) {
     const luck = pickLuck();
     clearFX();
