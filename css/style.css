@@ -212,6 +212,63 @@ button:disabled{opacity:.6; cursor:not-allowed}
   to{ transform: translate(40px, 60px); }
 }
 
+/* 赤ちゃん：うざい（パリピレインボー） */
+.fx-party.on{
+  opacity: 1;
+  background:
+    conic-gradient(from 0deg at 50% 50%,
+      #ff004c, #ff7a00, #ffe600, #2cff00, #00e5ff, #2b59ff, #b300ff, #ff004c);
+  filter: saturate(1.8) contrast(1.05);
+  animation: partySpin 1.2s linear infinite;
+}
+
+.fx-party.on::before{
+  content:"";
+  position:absolute;
+  inset:-30%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #ffffff22 0px,
+      #ffffff22 6px,
+      transparent 6px,
+      transparent 16px
+    );
+  transform: rotate(12deg);
+  opacity: .55;
+  animation: partyScan 0.35s linear infinite;
+  mix-blend-mode: overlay;
+}
+
+.fx-party.on::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(10px 10px at 20% 30%, #ffffffcc 0%, transparent 60%),
+    radial-gradient(8px 8px at 30% 70%,  #ffffffcc 0%, transparent 60%),
+    radial-gradient(12px 12px at 55% 20%, #ffffffcc 0%, transparent 60%),
+    radial-gradient(9px 9px at 70% 60%,  #ffffffcc 0%, transparent 60%),
+    radial-gradient(14px 14px at 85% 35%, #ffffffcc 0%, transparent 60%);
+  opacity: .75;
+  animation: partyPop 0.65s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes partySpin{
+  from{ transform: rotate(0deg) scale(1.02); }
+  to  { transform: rotate(360deg) scale(1.02); }
+}
+@keyframes partyScan{
+  from{ transform: translateX(-40px) rotate(12deg); }
+  to  { transform: translateX(40px) rotate(12deg); }
+}
+@keyframes partyPop{
+  0%,100%{ transform: scale(1); filter: blur(0px); }
+  50%{ transform: scale(1.03); filter: blur(0.3px); }
+}
+
+
 /* ===== モーダル ===== */
 .modal{
   position:fixed;
