@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>良い事言うぜ</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 演出レイヤ -->
+  <div id="fxLux" class="fx fx-lux" aria-hidden="true"></div>
+  <div id="fxSad" class="fx fx-sad" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <section class="card portrait">
+      <img id="speakerImg" src="assets/ojisan1.png" alt="話す人" />
+      <p class="name" id="speakerName">いいこと言いそうなおじさん</p>
+      <p class="hint" id="speakerHint">ボタンを押すと、なんかそれっぽいことを言う。</p>
+
+      <div class="meter">
+        <div class="meterHead">
+          <span>荒れ度</span>
+          <strong id="chaosLabel">0%</strong>
+        </div>
+        <div class="meterBar"><div id="chaosBar" class="meterFill"></div></div>
+        <p class="hint">連打すると荒れる（赤ちゃん率と大凶率が上がる）。しばらく放置で落ち着く。</p>
+      </div>
+    </section>
+
+    <section class="card speech">
+      <div class="badgeRow">
+        <span class="badge">登場: <strong id="whoLabel">おじさん</strong></span>
+        <span class="badge">おみくじ: <strong id="luckLabel">---</strong></span>
+        <span class="badge">読み上げ: <strong id="ttsLabel">OFF</strong></span>
+      </div>
+
+      <div class="msgBox" aria-live="polite">
+        <p class="msg" id="msg">ボタンを押してみて。</p>
+      </div>
+
+      <div class="controls">
+        <button id="btn">聞く</button>
+
+        <button id="btnTts" class="ghost">読み上げ切替</button>
+        <button id="btnEdit" class="ghost">セリフ編集</button>
+        <button id="btnCopy" class="ghost">コピー</button>
+
+        <div class="status">
+          <span class="dot" id="dot"></span>
+          <span id="statusText">待機中</span>
+        </div>
+      </div>
+
+      <p class="hint">
+        ※ おみくじは「運勢だけ」出る（コメント無し）。<br/>
+        ※ 大吉→豪華演出 / 大凶→悲しい演出。<br/>
+        ※ 読み上げは対応ブラウザのみ。
+      </p>
+    </section>
+  </div>
+
+  <!-- セリフ編集モーダル -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modalHead">
+        <h2 id="modalTitle">セリフ編集</h2>
+        <button id="btnClose" class="xbtn" aria-label="閉じる">×</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="good">おじさん</button>
+        <button class="tab" data-tab="baby">赤ちゃん（全部ミックス）</button>
+      </div>
+
+      <div class="panel" data-panel="good">
+        <p class="mini">1行=1セリフ。保存するとブラウザに記憶される。</p>
+        <textarea id="taGood" spellcheck="false"></textarea>
+      </div>
+
+      <div class="panel hidden" data-panel="baby">
+        <p class="mini">煽り／ド正論／小馬鹿／マウント／淡々…全部混ざる。1行=1セリフ。</p>
+        <textarea id="taBaby" spellcheck="false"></textarea>
+      </div>
+
+      <div class="modalFoot">
+        <button id="btnReset" class="ghost">初期に戻す</button>
+        <button id="btnSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
