@@ -2,9 +2,9 @@
 // 登場人物
 // =============================
 const SPEAKERS = {
-  ojisan1: { key: "ojisan1", who: "おじさん", name: "近所のおじさん", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan1.png" },
-  ojisan2: { key: "ojisan2", who: "おじさん", name: "隣人のおじさん", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan2.png" },
-  baby:    { key: "baby",   who: "赤ちゃん", name: "赤ちゃん", hint: "ボタンを押すとしゃべる。", img: "assets/baby.png" },
+  ojisan1: { key: "ojisan1", who: "おじさん", name: "いいこと言いそうなおじさん", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan1.png" },
+  ojisan2: { key: "ojisan2", who: "おじさん", name: "いいこと言いそうなおじさん（別）", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan2.png" },
+  baby:    { key: "baby",   who: "赤ちゃん", name: "腹立つこと言いそうな赤ちゃん", hint: "ボタンを押すとしゃべる。", img: "assets/baby.png" },
 };
 const OJISANS = [SPEAKERS.ojisan1, SPEAKERS.ojisan2];
 
@@ -85,17 +85,29 @@ const DEFAULT_BABY = [
 // 確率・カウンタ
 // =============================
 const P_BABY = 0.12;
-const P_OMIKUJI_EVENT = 0.18;
+
+// おみくじ：出すぎ対策で下げる（好みで 0.06〜0.12 あたり）
+const P_OMIKUJI_EVENT = 0.08;
+
+// おみくじクールダウン：おみくじを出したあと、何回ぶん出ないか
+const OMIKUJI_COOLDOWN_TURNS = 2;
+
 const P_DAIKYO_BONUS = 0.06;
 
-const P_EXPLODE = 0.02;           // ごくたまに爆発
-const EXPLODE_AT = 30;            // 30回目は確定
-const EXPLODE_DURATION_MS = 5000; // 5秒で閉じる
+const P_EXPLODE = 0.02;            // ごくたまに爆発
+const EXPLODE_AT = 30;             // 30回目は確定
+const EXPLODE_DURATION_MS = 5000;  // 5秒で閉じる
 
 let pressCount = 0;
 
 // 爆発したら true → おじさんだけ巻き込まれ画像
 let isSooty = false;
+
+// おみくじ：赤ちゃん回で当たったら持ち越す
+let pendingOmikuji = false;
+
+// おみくじ：クールダウン管理（0なら抽選OK）
+let omikujiCooldown = 0;
 
 // 今表示してる登場人物
 let currentSpeakerKey = "ojisan1";
@@ -166,7 +178,6 @@ const btnOmikujiClose = document.getElementById("btnOmikujiClose");
 // 爆発（全画面）※HTMLにある前提
 const boom = document.getElementById("boom");
 const boomBg = document.getElementById("boomBg");
-
 let explodeTimer = null;
 
 // =============================
@@ -247,6 +258,15 @@ function hideOmikuji() {
 
 btnOmikujiClose?.addEventListener("click", hideOmikuji);
 
+function canTryOmikujiNow() {
+  // クールダウン中は抽選しない（ただし pending は保持）
+  return omikujiCooldown === 0;
+}
+
+function setOmikujiCooldown() {
+  omikujiCooldown = OMIKUJI_COOLDOWN_TURNS;
+}
+
 // =============================
 // 爆発（5秒で閉じる / 終わったら通常に戻す）
 // =============================
@@ -278,7 +298,7 @@ function doExplode() {
   if (explodeTimer) clearTimeout(explodeTimer);
   explodeTimer = setTimeout(() => {
     hideBoom();
-    btn.disabled = false;       // ←普通に機能する
+    btn.disabled = false;
     statusText.textContent = "待機中";
     dot.className = "dot";
   }, EXPLODE_DURATION_MS);
@@ -295,6 +315,9 @@ async function talk() {
 
   setSpeaking(true);
   pressCount += 1;
+
+  // クールダウンは「ボタン押下ごとに減る」
+  if (omikujiCooldown > 0) omikujiCooldown -= 1;
 
   await sleep(120 + Math.random() * 160);
 
@@ -321,13 +344,43 @@ async function talk() {
     return; // この回はおみくじ出さない
   }
 
-  // たまにおみくじ
-  if (Math.random() < P_OMIKUJI_EVENT) {
+  // =========================
+  // おみくじ（B: 赤ちゃん回は“予約”して次のおじさん回で出す）
+  // + クールダウン
+  // =========================
+
+  const canTry = canTryOmikujiNow();
+  const hitOmikuji = canTry && (Math.random() < P_OMIKUJI_EVENT);
+
+  if (isBaby) {
+    // 赤ちゃん回では表示しない（パリピ演出優先）
+    if (hitOmikuji) pendingOmikuji = true;
+    return;
+  }
+
+  // おじさん回：pending があるなら優先的に出す（ただしクールダウン明けのみ）
+  if (pendingOmikuji && canTry) {
+    pendingOmikuji = false;
+
     const luck = pickLuck();
     clearFX();
     if (luck === "大吉") fxLux?.classList.add("on");
     if (luck === "大凶") fxSad?.classList.add("on");
     showOmikuji(luck);
+
+    setOmikujiCooldown();
+    return;
+  }
+
+  // おじさん回：pending が無いなら通常抽選（クールダウン明けのみ）
+  if (hitOmikuji) {
+    const luck = pickLuck();
+    clearFX();
+    if (luck === "大吉") fxLux?.classList.add("on");
+    if (luck === "大凶") fxSad?.classList.add("on");
+    showOmikuji(luck);
+
+    setOmikujiCooldown();
   }
 }
 
