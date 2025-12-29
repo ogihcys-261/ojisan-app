@@ -2,9 +2,9 @@
 // 登場人物
 // =============================
 const SPEAKERS = {
-  ojisan1: { key: "ojisan1", who: "おじさん", name: "いいこと言いそうなおじさん", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan1.png" },
-  ojisan2: { key: "ojisan2", who: "おじさん", name: "いいこと言いそうなおじさん（別）", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan2.png" },
-  baby:    { key: "baby",   who: "赤ちゃん", name: "腹立つこと言いそうな赤ちゃん", hint: "ボタンを押すとしゃべる。", img: "assets/baby.png" },
+  ojisan1: { key: "ojisan1", who: "おじさん", name: "近所のおじさん", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan1.png" },
+  ojisan2: { key: "ojisan2", who: "おじさん", name: "隣人のおじさん", hint: "ボタンを押すとしゃべる。", img: "assets/ojisan2.png" },
+  baby:    { key: "baby",   who: "赤ちゃん", name: "赤ちゃん", hint: "ボタンを押すとしゃべる。", img: "assets/baby.png" },
 };
 const OJISANS = [SPEAKERS.ojisan1, SPEAKERS.ojisan2];
 
